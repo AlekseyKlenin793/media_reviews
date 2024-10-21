@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моя Библиотека</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Моя Библиотека</h1>
+        </header>
+
+        <main>
+            <!-- Секция добавления контента -->
+            <section id="add-media">
+                <h2>Добавить медиа</h2>
+                <div class="form-group">
+                    <label for="media-type">Выберите тип медиа</label>
+                    <select id="media-type" onchange="showForm()">
+                        <option value="">Выберите тип медиа</option>
+                        <option value="movie">Фильм</option>
+                        <option value="series">Сериал</option>
+                        <option value="music">Музыка</option>
+                    </select>
+                </div>
+                <div id="media-form"></div>
+                <button class="btn" onclick="addMedia()">Добавить</button>
+            </section>
+
+            <div class="content">
+                <!-- Секция Моя библиотека -->
+                <section id="library-section">
+                    <h2>Моя библиотека</h2>
+                    <div id="library" class="media-container"></div>
+                </section>
+
+                <!-- Секция История -->
+                <section id="history-section">
+                    <h2>История</h2>
+                    <div id="history" class="media-container"></div>
+                </section>
+
+                <!-- Секция Kanban -->
+                <section id="kanban-section">
+                    <h2>Kanban доска</h2>
+                    <div class="kanban">
+                        <div class="kanban-column" id="kanban-plans">
+                            <h3>В планах</h3>
+                            <div class="kanban-items"></div>
+                        </div>
+                        <div class="kanban-column" id="kanban-in-progress">
+                            <h3>В процессе</h3>
+                            <div class="kanban-items"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 Моя Библиотека. Все права защищены.</p>
+        </footer>
+    </div>
+
+    <!-- Модальное окно для просмотра информации о медиа -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">Закрыть</span>
+            <div id="modal-info"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
