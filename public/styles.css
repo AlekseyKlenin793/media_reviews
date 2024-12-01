@@ -58,6 +58,13 @@ main {
     color: #333;
 }
 
+/* Добавляем box-sizing для корректного расчета размеров */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 .form-group select,
 .form-group input,
 .form-group textarea {
@@ -68,6 +75,7 @@ main {
     border: 1px solid #ddd;
     background-color: #f9f9f9;
     transition: border-color 0.2s ease;
+    box-sizing: border-box;
 }
 
 .form-group select:focus,
@@ -128,14 +136,6 @@ section {
     background: #fafafa;
 }
 
-.media-card {
-    background-color: #f9f9f9;
-    border: 1px solid #ccc;
-    margin: 5px 0;
-    padding: 10px;
-    border-radius: 5px;
-}
-
 /* Kanban доска */
 .kanban {
     display: flex;
@@ -181,6 +181,7 @@ section {
     z-index: 1000;
 }
 
+/* Контент модального окна */
 .modal-content {
     background-color: #fff;
     padding: 20px;
@@ -190,22 +191,32 @@ section {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     text-align: center;
     position: relative;
+    /* Чтобы крестик был размещен внутри */
 }
 
+/* Крестик для закрытия */
 .modal-content .close {
-    margin-top: 20px;
-    padding: 10px 20px;
-    background-color: #f44336;
-    color: white;
-    border: none;
-    border-radius: 5px;
+    position: absolute;
+    /* Абсолютное позиционирование */
+    top: 10px;
+    /* Отступ от верхнего края */
+    right: 10px;
+    /* Отступ от правого края */
+    font-size: 30px;
+    /* Размер шрифта для крестика */
+    color: #333;
+    /* Цвет крестика */
     cursor: pointer;
-    font-size: 1em;
+    /* Курсор в виде указателя */
+    font-weight: bold;
 }
 
+/* Ховер эффект для крестика */
 .modal-content .close:hover {
-    background-color: #d32f2f;
+    color: #f44336;
+    /* Цвет при наведении */
 }
+
 
 footer {
     text-align: center;
@@ -215,4 +226,156 @@ footer {
     position: relative;
     bottom: 0;
     width: 100%;
+}
+
+/* Стиль для строки поиска */
+#search-bar {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    transition: border-color 0.2s ease;
+    margin-bottom: 20px;
+}
+
+#search-bar:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+/* Общий стиль для кнопок */
+.media-card button {
+    background-color: #007BFF;
+    /* Синий цвет */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    margin: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+/* Ховер эффект */
+.media-card button:hover {
+    background-color: #0056b3;
+    /* Более тёмный синий при наведении */
+}
+
+/* Стиль карточки медиа */
+.media-card {
+    position: relative;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #fff;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: box-shadow 0.3s ease;
+}
+
+.media-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Троеточие для меню */
+.options-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    color: #555;
+}
+
+/* Скрытое меню */
+.options-menu {
+    display: none;
+    position: absolute;
+    top: 30px;
+    right: 10px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    padding: 5px;
+}
+
+/* Кнопки в меню */
+.options-menu button {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    text-align: left;
+    color: #007BFF;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.options-menu button:hover {
+    background-color: #f1f1f1;
+}
+
+/* Подсветка ошибки с анимацией */
+.input-error {
+    border: 2px solid red;
+    outline: none;
+    animation: shake 0.3s ease;
+    background-color: #ffe6e6;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25%,
+    75% {
+        transform: translateX(-5px);
+    }
+
+    50% {
+        transform: translateX(5px);
+    }
+}
+
+/* Всплывающее сообщение */
+.form-message {
+    position: absolute;
+    /* Убираем из потока */
+    top: 0;
+    /* Показываем над формой */
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: -50px;
+    /* Чтобы начальное положение было невидимым */
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    color: white;
+    text-align: center;
+    opacity: 0;
+    /* Начинаем с прозрачного */
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    /* Плавные переходы */
+    z-index: 1000;
+}
+
+.form-message.show {
+    opacity: 1;
+    /* Делаем видимым */
+    transform: translateX(-50%) translateY(10px);
+    /* Появление из верхней области */
+}
+
+.form-message.error {
+    background-color: red;
 }
