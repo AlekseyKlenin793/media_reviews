@@ -1,91 +1,139 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Pool } = require('pg');
 const cors = require('cors');
+const { Sequelize } = require('sequelize');
+const { Movie, Series, Music } = require('./models');
 
 const app = express();
 const PORT = 3000;
 
-// Подключение к базе данных
-const pool = new Pool({
-    user: 'postgres',
+// Настройка базы данных с Sequelize
+const sequelize = new Sequelize('media_reviews', 'postgres', '804793', {
     host: 'localhost',
-    database: 'media_reviews',
-    password: '804793',
-    port: 5432
+    dialect: 'postgres',
 });
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Проверка соединения с базой данных
+sequelize.authenticate()
+    .then(() => console.log('Database connected successfully.'))
+    .catch(err => console.error('Unable to connect to the database:', err));
+
+// Маршруты
+
 // Получение всех медиа
 app.get('/api/media/all', async (req, res) => {
-    const movies = await pool.query('SELECT * FROM movies');
-    const series = await pool.query('SELECT * FROM series');
-    const music = await pool.query('SELECT * FROM music');
-    res.json({ movies: movies.rows, series: series.rows, music: music.rows });
+    try {
+        const movies = await Movie.findAll();
+        const series = await Series.findAll();
+        const music = await Music.findAll();
+        res.json({ movies, series, music });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching media' });
+    }
 });
 
 // Проверка существования медиа
 app.get('/api/media', async (req, res) => {
     const { title, year } = req.query;
-    const movies = await pool.query('SELECT * FROM movies WHERE title = $1 AND release_year = $2', [title, year]);
-    const series = await pool.query('SELECT * FROM series WHERE title = $1 AND release_year = $2', [title, year]);
-    const music = await pool.query('SELECT * FROM music WHERE title = $1 AND release_year = $2', [title, year]);
-    res.json([...movies.rows, ...series.rows, ...music.rows]);
+    try {
+        const movies = await Movie.findAll({ where: { title, year } });
+        const series = await Series.findAll({ where: { title, year } });
+        const music = await Music.findAll({ where: { title, year } });
+        res.json([...movies, ...series, ...music]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error checking media' });
+    }
 });
 
 // Добавление медиа
-app.post('/api/movies', async (req, res) => {
-    const { title, release_year, country, genre, status, review, rating } = req.body;
-    const result = await pool.query('INSERT INTO movies (title, release_year, country, genre, status, review, rating) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', [title, release_year, country, genre, status, review, rating]);
-    res.json(result.rows[0]);
-});
-
-app.post('/api/series', async (req, res) => {
-    const { title, release_year, seasons, country, genre, status, review, rating } = req.body;
-    const result = await pool.query('INSERT INTO series (title, release_year, seasons, country, genre, status, review, rating) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *', [title, release_year, seasons, country, genre, status, review, rating]);
-    res.json(result.rows[0]);
-});
-
-app.post('/api/music', async (req, res) => {
-    const { title, artist, release_year, genre, status, review, rating } = req.body;
-    const result = await pool.query('INSERT INTO music (title, artist, release_year, genre, status, review, rating) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *', [title, artist, release_year, genre, status, review, rating]);
-    res.json(result.rows[0]);
+app.post('/api/media', async (req, res) => {
+    const { type, ...data } = req.body;
+    try {
+        let newMedia;
+        if (type === 'movie') {
+            newMedia = await Movie.create(data);
+        } else if (type === 'series') {
+            newMedia = await Series.create(data);
+        } else if (type === 'music') {
+            newMedia = await Music.create(data);
+        }
+        res.status(201).json({ message: 'Media added successfully', data: newMedia });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error adding media' });
+    }
 });
 
 // Получение конкретного медиа
 app.get('/api/media/:id', async (req, res) => {
     const { id } = req.params;
-    const movie = await pool.query('SELECT * FROM movies WHERE id = $1', [id]);
-    const series = await pool.query('SELECT * FROM series WHERE id = $1', [id]);
-    const music = await pool.query('SELECT * FROM music WHERE id = $1', [id]);
+    try {
+        const movie = await Movie.findByPk(id);
+        const series = await Series.findByPk(id);
+        const music = await Music.findByPk(id);
 
-    if (movie.rows.length) {
-        res.json(movie.rows[0]);
-    } else if (series.rows.length) {
-        res.json(series.rows[0]);
-    } else if (music.rows.length) {
-        res.json(music.rows[0]);
-    } else {
-        res.status(404).json({ message: 'Media not found' });
+        if (movie) {
+            res.json(movie);
+        } else if (series) {
+            res.json(series);
+        } else if (music) {
+            res.json(music);
+        } else {
+            res.status(404).json({ message: 'Media not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching media by ID' });
     }
 });
 
 // Удаление медиа
-app.delete('/api/movies/:id', async (req, res) => {
+app.delete('/api/media/:id', async (req, res) => {
     const { id } = req.params;
-    await pool.query('DELETE FROM movies WHERE id = $1', [id]);
-    res.status(204).send();
+    try {
+        const deletedMovie = await Movie.destroy({ where: { id } });
+        const deletedSeries = await Series.destroy({ where: { id } });
+        const deletedMusic = await Music.destroy({ where: { id } });
+
+        if (deletedMovie || deletedSeries || deletedMusic) {
+            res.status(204).send();
+        } else {
+            res.status(404).json({ message: 'Media not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error deleting media' });
+    }
 });
 
-// Обновление медиа (изменение)
+// Обновление медиа
 app.put('/api/media/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, release_year, country, genre, status, review, rating } = req.body;
-    await pool.query('UPDATE movies SET title = $1, release_year = $2, country = $3, genre = $4, status = $5, review = $6, rating = $7 WHERE id = $8', [title, release_year, country, genre, status, review, rating, id]);
-    res.status(204).send();
+    const { type, ...data } = req.body;
+    try {
+        let updatedMedia;
+        if (type === 'movie') {
+            updatedMedia = await Movie.update(data, { where: { id } });
+        } else if (type === 'series') {
+            updatedMedia = await Series.update(data, { where: { id } });
+        } else if (type === 'music') {
+            updatedMedia = await Music.update(data, { where: { id } });
+        }
+        if (updatedMedia[0] > 0) {
+            res.status(200).json({ message: 'Media updated successfully' });
+        } else {
+            res.status(404).json({ message: 'Media not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating media' });
+    }
 });
 
 app.listen(PORT, () => {

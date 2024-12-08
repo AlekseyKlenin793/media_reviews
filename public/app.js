@@ -10,7 +10,7 @@ function showForm() {
         mediaForm.innerHTML = '';
         return;
     }
-    0
+
     const formContent = `
         <div class="form-group">
             <label for="title">Название</label>
@@ -25,10 +25,6 @@ function showForm() {
                 <input type="text" id="director" placeholder="Введите режиссёра" required>
             `}
         </div>
-        <div class="form-group">
-            <label for="year">Год выпуска</label>
-            <input type="number" id="year" placeholder="Введите год" min="1900" max="2100" required>
-        </div>
         ${mediaType === 'series' ? `
             <div class="form-group">
                 <label for="seasons">Количество сезонов</label>
@@ -36,15 +32,33 @@ function showForm() {
             </div>
         ` : ''}
         <div class="form-group">
+            <label for="release_year">Год выпуска</label>
+            <input type="number" id="release_year" placeholder="Введите год" min="0" required>
+        </div>
+        ${mediaType !== 'music' ? `
+            <div class="form-group">
+                <label for="country">Страна</label>
+                <input type="text" id="country" placeholder="Введите страну" required>
+            </div>
+        ` : ''}
+        <div class="form-group">
+            <label for="genre">Жанр</label>
+            <input type="text" id="genre" placeholder="Введите жанр" required>
+        </div>
+        <div class="form-group">
+            <label for="rating">Рейтинг</label>
+            <input type="number" id="rating" placeholder="Введите рейтинг (1-10) (опционально)" min="1" max="10">
+        </div>
+        <div class="form-group">
             <label for="review">Рецензия</label>
-            <textarea id="review" placeholder="Введите рецензию (по желанию)" rows="3"></textarea>
+            <textarea id="review" placeholder="Введите рецензию (опционально)" rows="3"></textarea>
         </div>
         <div class="form-group">
             <label for="status">Статус</label>
             <select id="status" required>
                 <option value="plan">Планирую</option>
                 <option value="in-progress">В процессе</option>
-                <option value="finished">${mediaType === "music" ? "Прослушано" : "Просмотрено"}</option>
+                <option value="finished">${mediaType === 'music' ? 'Прослушано' : 'Просмотрено'}</option>
             </select>
         </div>
     `;
@@ -55,169 +69,75 @@ function showForm() {
     mediaForm.style.gap = '10px';
 }
 
-// Функция для добавления медиа в библиотеку
-function addMedia() {
-    if (!validateForm()) {
-        showMessage('Пожалуйста, заполните все обязательные поля.');
-        return;
-    }
+
+async function addMedia() {
+    if (!validateForm()) return;
 
     const mediaType = document.getElementById('media-type').value;
     const title = document.getElementById('title').value;
     const review = document.getElementById('review').value;
     const status = document.getElementById('status').value;
+    const release_year = document.getElementById('release_year').value;
+    const genre = document.getElementById('genre').value;
+    const rating = document.getElementById('rating').value || null;
 
     let newMedia = { type: mediaType, title, review, status };
 
+    // Обработка фильмов
     if (mediaType === 'movie') {
         const director = document.getElementById('director').value;
-        const year = document.getElementById('year').value;
-        newMedia = { ...newMedia, director, year };
-    } else if (mediaType === 'series') {
+        const country = document.getElementById('country').value;
+        newMedia = { ...newMedia, director, release_year, country, genre, rating };
+    }
+    // Обработка сериалов
+    else if (mediaType === 'series') {
         const director = document.getElementById('director').value;
         const seasons = document.getElementById('seasons').value;
-        newMedia = { ...newMedia, director, seasons };
-    } else if (mediaType === 'music') {
+        const country = document.getElementById('country').value;
+        newMedia = { ...newMedia, director, release_year, seasons, country, genre, rating };
+    }
+    // Обработка музыки
+    else if (mediaType === 'music') {
         const artist = document.getElementById('artist').value;
-        const year = document.getElementById('year').value;
-        newMedia = { ...newMedia, artist, year };
+        newMedia = { ...newMedia, artist, release_year, genre, rating };
     }
 
-    library.push(newMedia);
+    try {
+        const response = await fetch('/api/media', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newMedia),
+        });
 
-    if (status === 'finished') {
-        addToHistory(newMedia);
+        if (response.ok) {
+            console.log('Медиа добавлено успешно:', await response.json());
+            await fetchLibrary(); // Обновляем данные после добавления
+            clearForm(mediaType); // Очищаем форму
+        } else {
+            console.error('Ошибка при добавлении медиа:', await response.text());
+            alert('Ошибка при добавлении медиа. Попробуйте снова.');
+        }
+    } catch (error) {
+        console.error('Ошибка соединения с сервером:', error);
+        alert('Не удалось соединиться с сервером.');
     }
+}
 
-    saveLibrary();
-
-    displayHistory();
-    displayLibrary();
-    displayKanban();
-
-    clearForm(mediaType);
-
-    showMessage('Медиа успешно добавлено!', 'success');
-
-    // Очищаем поля формы, сохраняем тип
-    const mediaTypeElement = document.getElementById('media-type');
-    const selectedType = mediaTypeElement.value;
-    document.getElementById('media-form').innerHTML = '';
-    mediaTypeElement.value = selectedType;
-    showForm();
+function closeModal() {
+    const modal = document.getElementById('modal');
+    modal.style.display = 'none';
 }
 
 
 function clearForm(mediaType) {
     const mediaForm = document.getElementById('media-form');
-    mediaForm.innerHTML = ''; // Очищаем текущую форму
-    document.getElementById('media-type').value = mediaType; // Сохраняем выбранный тип медиа
-    showForm(); // Перестраиваем форму для сохранённого типа
+    mediaForm.innerHTML = '';
+    document.getElementById('media-type').value = mediaType;
+    showForm();
 }
 
-
-function addToHistory(media) {
-    if (media.status === 'finished') {
-        const historyContainer = document.getElementById('history');
-        const historyCard = document.createElement('div');
-        historyCard.classList.add('media-card');
-        historyCard.innerHTML = `
-            <h4>${media.title}</h4>
-            <p>${media.type === 'movie' || media.type === 'series' ? 'Режиссёр' : 'Исполнитель'}: ${media.director || media.artist}</p>
-            ${media.year ? `<p>Год: ${media.year}</p>` : ''}
-            ${media.seasons ? `<p>Количество сезонов: ${media.seasons}</p>` : ''}
-            <p>Рецензия: ${media.review || 'Нет рецензии'}</p>
-        `;
-
-        historyContainer.appendChild(historyCard);
-    }
-}
-
-
-function displayLibrary() {
-    const libraryContainer = document.getElementById('library');
-    libraryContainer.innerHTML = '';
-
-    library.forEach((media, index) => {
-        const mediaCard = document.createElement('div');
-        mediaCard.classList.add('media-card');
-        mediaCard.innerHTML = `
-            <h4>${media.title}</h4>
-            <p>${media.type === 'movie' ? 'Режиссёр' : media.type === 'series' ? 'Режиссёр' : 'Исполнитель'}: ${media.director || media.artist}</p>
-            <span class="options-icon" onclick="toggleOptionsMenu(event, ${index})">⋮</span>
-            <div class="options-menu" id="options-menu-${index}">
-                <button onclick="editMedia(${index})">Редактировать</button>
-                <button onclick="deleteMedia(${index}, event)">Удалить</button>
-            </div>
-        `;
-
-
-        // Открытие модального окна при клике на карточку
-        mediaCard.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('options-icon')) {
-                viewMedia(index);
-            }
-        });
-
-        libraryContainer.appendChild(mediaCard);
-    });
-}
-
-function toggleOptionsMenu(event, index) {
-    event.stopPropagation(); // Останавливаем всплытие, чтобы не срабатывал просмотр карточки
-    const menu = document.getElementById(`options-menu-${index}`);
-    const allMenus = document.querySelectorAll('.options-menu');
-
-    // Скрываем все открытые меню
-    allMenus.forEach(m => {
-        if (m !== menu) m.style.display = 'none';
-    });
-
-    // Переключаем текущее меню
-    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-}
-
-// Закрытие меню при клике вне карточки
-document.addEventListener('click', () => {
-    document.querySelectorAll('.options-menu').forEach(menu => {
-        menu.style.display = 'none';
-    });
-});
-
-
-function displayHistory() {
-    const historyContainer = document.getElementById('history');
-    historyContainer.innerHTML = ''; // Очищаем контейнер перед повторным заполнением
-
-    library.forEach(media => {
-        if (media.status === 'finished') { // Показываем только завершённые медиа
-            const historyCard = document.createElement('div');
-            historyCard.classList.add('media-card');
-            historyCard.innerHTML = `
-                <h4>${media.title}</h4>
-                <p>${media.type === 'movie' || media.type === 'series' ? 'Режиссёр' : 'Исполнитель'}: ${media.director || media.artist}</p>
-                ${media.year ? `<p>Год: ${media.year}</p>` : ''}
-                ${media.seasons ? `<p>Количество сезонов: ${media.seasons}</p>` : ''}
-                <p>Рецензия: ${media.review || 'Нет рецензии'}</p>
-            `;
-
-            historyContainer.appendChild(historyCard);
-        }
-    });
-}
-
-
-// Функция для удаления медиа из библиотеки
-function deleteMedia(index, event) {
-    event.stopPropagation(); // Остановить всплытие событий
-    library.splice(index, 1);
-    saveLibrary();
-    displayLibrary();
-    displayKanban();
-    displayHistory();
-}
-
-// Функция для просмотра медиа
 function viewMedia(index) {
     const modal = document.getElementById('modal');
     const modalInfo = document.getElementById('modal-info');
@@ -225,33 +145,97 @@ function viewMedia(index) {
 
     modalInfo.innerHTML = `
         <h2>${media.title}</h2>
-        <p>Тип: ${media.type === 'movie' ? 'Фильм' : media.type === 'series' ? 'Сериал' : 'Музыка'}</p>
-        <p>${media.type === 'movie' ? 'Режиссёр' : media.type === 'series' ? 'Режиссёр' : 'Исполнитель'}: ${media.director || media.artist}</p>
-        ${media.year ? `<p>Год: ${media.year}</p>` : ''}
-        ${media.seasons ? `<p>Количество сезонов: ${media.seasons}</p>` : ''}
-        <p>Рецензия: ${media.review || 'Нет рецензии'}</p>
+        <div class="info-item">
+            <p class="info-label">Тип:</p>
+            <p class="info-item-value">${media.type === 'movie' ? 'Фильм' : media.type === 'series' ? 'Сериал' : 'Музыка'}</p>
+        </div>
+        <div class="info-item">
+            <p class="info-label">${media.type === 'music' ? 'Исполнитель' : 'Режиссёр'}:</p>
+            <p class="info-item-value">${media.artist || media.director || 'Не указано'}</p>
+        </div>
+        ${media.seasons ? `
+        <div class="info-item">
+            <p class="info-label">Количество сезонов:</p>
+            <p class="info-item-value">${media.seasons}</p>
+        </div>
+        ` : ''}
+        ${media.release_year ? `
+        <div class="info-item">
+            <p class="info-label">Год выпуска:</p>
+            <p class="info-item-value">${media.release_year}</p>
+        </div>
+        ` : ''}
+        ${media.country ? `
+        <div class="info-item">
+            <p class="info-label">Страна:</p>
+            <p class="info-item-value">${media.country}</p>
+        </div>
+        ` : ''}
+        ${media.genre ? `
+        <div class="info-item">
+            <p class="info-label">Жанр:</p>
+            <p class="info-item-value">${media.genre}</p>
+        </div>
+        ` : ''}
+        ${media.rating !== undefined && media.rating !== null ? `
+            <div class="info-item">
+                <p class="info-label">Рейтинг:</p>
+                <p class="info-item-value">${media.rating}/10</p>
+            </div>
+            ` : ''}
+        <div class="info-item">
+            <p class="info-label">Рецензия:</p>
+            <p class="info-item-value">${media.review || 'Нет рецензии'}</p>
+        </div>
+        <div class="info-item status">
+            <p class="info-label">Статус:</p>
+            <p class="info-item-value">${media.status === 'plan' ? 'Планирую' : media.status === 'in-progress' ? 'В процессе' : media.type === 'music' ? 'Прослушано' : 'Просмотрено'}</p>
+        </div>
     `;
 
     modal.style.display = 'flex';
 }
 
-function searchLibrary() {
-    const query = document.getElementById('search-bar').value.toLowerCase();
-    const libraryContainer = document.getElementById('library');
-    const mediaCards = libraryContainer.getElementsByClassName('media-card');
 
-    for (let card of mediaCards) {
-        const title = card.querySelector('h4').innerText.toLowerCase();
-        card.style.display = title.includes(query) ? '' : 'none';
+// Функция для отображения Kanban-доски
+function displayLibrary() {
+    const libraryContainer = document.getElementById('library');
+    libraryContainer.innerHTML = library.map((media, index) => renderMediaCard(media, index)).join('');
+}
+
+
+// Функция для отображения Истории
+function displayHistory() {
+    const historyContainer = document.getElementById('history');
+    historyContainer.innerHTML = '';
+
+    library.filter(media => media.status === 'finished').forEach(media => {
+        const historyCard = document.createElement('div');
+        historyCard.classList.add('history-card');
+        historyCard.innerHTML = `
+            <h4>${media.title}${media.release_year ? ` (${media.release_year})` : ''} - 
+                ${media.type === 'movie' || media.type === 'series'
+                ? media.director || 'Режиссёр не указан'
+                : media.artist || 'Исполнитель не указан'}
+            </h4>
+        `;
+        historyContainer.appendChild(historyCard);
+    });
+}
+
+// Функция для добавления в Историю
+function addToHistory(media) {
+    if (media.status === 'finished') {
+        const existingMedia = library.find(item => item.id === media.id);
+        if (existingMedia) {
+            existingMedia.status = 'finished';
+            saveLibrary();
+            displayHistory();
+        }
     }
 }
 
 
-// Закрытие модального окна
-function closeModal() {
-    const modal = document.getElementById('modal');
-    modal.style.display = 'none';
-}
 
 // Функция для отображения Kanban-доски
 function displayKanban() {
@@ -275,6 +259,345 @@ function displayKanban() {
 }
 
 
+function getRatingClass(rating) {
+    if (rating >= 1 && rating < 4) return 'rating-red';
+    if (rating >= 4 && rating < 7) return 'rating-gray';
+    if (rating >= 7 && rating <= 10) return 'rating-green';
+    return 'rating-default';
+}
+
+
+function renderMediaCard(media, index) {
+    const directorOrArtist = media.type === 'movie' || media.type === 'series' ? media.director : media.artist;
+
+    return `
+        <div class="media-card" data-type="${media.type}" data-index="${index}" onclick="viewMedia(${index})">
+            <h4>${media.title}${media.release_year ? ` (${media.release_year})` : ''}</h4>
+            <p class="director-or-artist">${media.type === 'movie' || media.type === 'series' ? 'Режиссёр' : 'Исполнитель'}: ${directorOrArtist || 'Не указано'}</p>
+            ${media.seasons ? `<p>Количество сезонов: ${media.seasons}</p>` : ''}
+            ${media.rating ? `<div class="rating-box ${getRatingClass(media.rating)}">${media.rating}/10</div>` : ''}
+            <div class="options-btn" onclick="toggleOptionsMenu(event, ${index})">
+                <span class="dots">...</span>
+            </div>
+            <div id="options-menu-${index}" class="options-menu">
+                <button onclick="openEditModal(${index})">Редактировать</button>
+                <button onclick="deleteMedia(${media.id}, event)">Удалить</button>
+            </div>
+        </div>
+    `;
+}
+
+
+function openEditModal(index) {
+    const modal = document.getElementById('edit-modal');
+    const modalInfo = document.getElementById('edit-modal-info');
+    const media = library[index];
+
+    // Определяем текстовые статусы для select
+    const statusOptions = media.type === 'music'
+        ? `<option value="finished" ${media.status === 'finished' ? 'selected' : ''}>Прослушано</option>
+           <option value="in-progress" ${media.status === 'in-progress' ? 'selected' : ''}>В процессе</option>
+           <option value="plan" ${media.status === 'plan' ? 'selected' : ''}>Планирую</option>`
+        : `<option value="finished" ${media.status === 'finished' ? 'selected' : ''}>Просмотрено</option>
+           <option value="in-progress" ${media.status === 'in-progress' ? 'selected' : ''}>В процессе</option>
+           <option value="plan" ${media.status === 'plan' ? 'selected' : ''}>Планирую</option>`;
+
+    // Генерируем HTML для редактирования медиа
+    modalInfo.innerHTML = `
+        <h2>Редактировать: ${media.title}</h2>
+        <div class="form-group">
+            <label for="edit-title">Название</label>
+            <input type="text" id="edit-title" value="${media.title}" required>
+        </div>
+        <div class="form-group">
+            <label for="edit-director-artist">${media.type === 'movie' || media.type === 'series' ? 'Режиссёр' : 'Исполнитель'}</label>
+            <input type="text" id="edit-director-artist" value="${media.type === 'music' ? media.artist : media.director || ''}" required>
+        </div>
+        <div class="form-group">
+            <label for="edit-year">Год</label>
+            <input type="number" id="edit-year" value="${media.release_year || ''}" required>
+        </div>
+        ${media.type === 'series' || media.type === 'movie' ? `
+            <div class="form-group">
+                <label for="edit-country">Страна</label>
+                <input type="text" id="edit-country" value="${media.country || ''}">
+            </div>` : ''}
+        ${media.type === 'series' ? `
+            <div class="form-group">
+                <label for="edit-seasons">Количество сезонов</label>
+                <input type="number" id="edit-seasons" value="${media.seasons || ''}">
+            </div>` : ''}
+        <div class="form-group">
+            <label for="edit-genre">Жанр</label>
+            <input type="text" id="edit-genre" value="${media.genre || ''}" required>
+        </div>
+        <div class="form-group">
+            <label for="edit-rating">Рейтинг</label>
+            <input type="number" id="edit-rating" step="1" min="1" max="10" value="${media.rating || ''}">
+        </div>
+        <div class="form-group">
+            <label for="edit-review">Рецензия</label>
+            <textarea id="edit-review">${media.review || ''}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="edit-status">Статус</label>
+            <select id="edit-status" required>
+                ${statusOptions}
+            </select>
+        </div>
+    `;
+
+    // Показать модальное окно
+    modal.style.display = 'flex';
+
+    document.getElementById('save-btn').onclick = () => {
+        if (validateEditForm()) {
+            saveMediaChanges(index);
+        }
+    };
+}
+
+
+function saveMediaChanges(index) {
+    const media = library[index];
+
+    const updatedMedia = {
+        ...media,
+        title: document.getElementById('edit-title').value.trim(),
+        review: document.getElementById('edit-review').value.trim() || null,
+        director: media.type === 'music' ? null : document.getElementById('edit-director-artist').value.trim() || null,
+        artist: media.type === 'music' ? document.getElementById('edit-director-artist').value.trim() || null : null,
+        release_year: parseInt(document.getElementById('edit-year').value) || null,
+        country: media.type === 'music' ? null : (document.getElementById('edit-country').value.trim() || null),
+        genre: document.getElementById('edit-genre').value.trim() || null,
+        rating: parseFloat(document.getElementById('edit-rating').value) || null,
+        seasons: parseInt(document.getElementById('edit-seasons')?.value) || null,
+        status: document.getElementById('edit-status').value,
+    };
+
+    fetch(`/api/media/${media.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMedia),
+    })
+        .then(async (response) => {
+            if (response.ok) {
+                // Обновляем локальную библиотеку
+                library[index] = updatedMedia;
+
+                // Закрываем модальное окно
+                closeEditModal();
+                closeModal();
+
+                // Проверяем, нужно ли обновить Историю
+                if (updatedMedia.status === 'finished') {
+                    const isAlreadyInHistory = document.querySelector(`[data-id="${media.id}"]`);
+                    if (!isAlreadyInHistory) {
+                        addToHistory(updatedMedia);
+                    }
+                }
+
+                displayKanban();
+                displayLibrary();
+                displayHistory();
+                saveLibrary();
+
+                // Находим карточку по index в DOM и обновляем её
+                const mediaCardElement = document.querySelector(`[data-index="${index}"]`);
+                if (mediaCardElement) {
+                    // Обновляем заголовок
+                    const titleElement = mediaCardElement.querySelector('h4');
+                    titleElement.textContent = `${updatedMedia.title}${updatedMedia.release_year ? ` (${updatedMedia.release_year})` : ''}`;
+
+                    // Обновляем режиссера/исполнителя
+                    const directorOrArtistElement = mediaCardElement.querySelector('.director-or-artist');
+                    directorOrArtistElement.textContent =
+                        updatedMedia.type === 'movie' || updatedMedia.type === 'series'
+                            ? `Режиссёр: ${updatedMedia.director || 'Не указано'}`
+                            : `Исполнитель: ${updatedMedia.artist || 'Не указано'}`;
+
+                    // Обновляем рейтинг
+                    const ratingBox = mediaCardElement.querySelector('.rating-box');
+                    if (ratingBox) {
+                        const ratingClass = getRatingClass(updatedMedia.rating);
+                        ratingBox.textContent = `${updatedMedia.rating}/10`;
+                        ratingBox.className = `rating-box ${ratingClass}`;
+                    }
+
+                    // Обновляем страну и жанр
+                    const countryElement = mediaCardElement.querySelector('.country');
+                    if (countryElement) {
+                        countryElement.textContent = updatedMedia.country ? `Страна: ${updatedMedia.country}` : '';
+                    }
+
+                    const genreElement = mediaCardElement.querySelector('.genre');
+                    if (genreElement) {
+                        genreElement.textContent = updatedMedia.genre ? `Жанр: ${updatedMedia.genre}` : '';
+                    }
+
+                    // Обновляем количество сезонов (если есть)
+                    const seasonsElement = mediaCardElement.querySelector('.seasons');
+                    if (seasonsElement) {
+                        seasonsElement.textContent = updatedMedia.seasons
+                            ? `Количество сезонов: ${updatedMedia.seasons}`
+                            : '';
+                    }
+                } else {
+                    console.warn(`Media card not found for index: ${index}`);
+                }
+            }
+            else {
+                console.error('Ошибка при сохранении данных:', await response.text());
+            }
+        })
+        .catch((error) => {
+            console.error('Ошибка при сохранении данных:', error);
+        });
+}
+
+
+function closeEditModal() {
+    const modal = document.getElementById('edit-modal');
+    displayHistory();
+    modal.style.display = 'none';
+}
+
+
+function renderLibrary() {
+    const libraryContainer = document.getElementById('library');
+    libraryContainer.innerHTML = '';
+
+    library.forEach((media, index) => {
+        libraryContainer.innerHTML += renderMediaCard(media, index);
+    });
+}
+
+async function fetchLibrary() {
+    try {
+        const response = await fetch('/api/media/all');
+        if (response.ok) {
+            const { movies, series, music } = await response.json();
+            library = [
+                ...movies.map(movie => ({ ...movie, type: 'movie' })),
+                ...series.map(series => ({ ...series, type: 'series' })),
+                ...music.map(music => ({ ...music, type: 'music' }))
+            ];
+            displayLibrary();
+            displayHistory();
+            displayKanban();
+        } else {
+            console.error('Ошибка при обновлении библиотеки:', await response.text());
+        }
+    } catch (error) {
+        console.error('Ошибка при обновлении библиотеки:', error);
+    }
+}
+
+
+function toggleOptionsMenu(event, index) {
+    event.stopPropagation(); // Останавливаем всплытие события
+    const menu = document.getElementById(`options-menu-${index}`);
+    const allMenus = document.querySelectorAll('.options-menu');
+
+    // Закрываем все открытые меню
+    allMenus.forEach(m => {
+        if (m !== menu) m.style.display = 'none';
+    });
+
+    // Переключаем текущее меню
+    if (menu.style.display === 'block') {
+        menu.style.display = 'none';
+    } else {
+        menu.style.display = 'block';
+    }
+}
+
+
+// Закрытие меню при клике вне карточки
+document.addEventListener('click', () => {
+    document.querySelectorAll('.options-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+});
+
+
+async function deleteMedia(id, event) {
+    event.stopPropagation(); // Остановить всплытие событий
+    try {
+        const response = await fetch(`/api/media/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            library = library.filter(media => media.id !== id);
+            displayLibrary();
+            displayKanban();
+            displayHistory();
+        } else {
+            console.error('Ошибка при удалении медиа:', await response.text());
+        }
+    } catch (error) {
+        console.error('Ошибка при удалении медиа:', error);
+    }
+}
+
+
+function searchLibrary() {
+    const query = document.getElementById('search-bar').value.toLowerCase();
+    const sortBy = document.getElementById('sort-by').value; // Считываем выбранный способ сортировки
+    const libraryContainer = document.getElementById('library');
+    const mediaCards = Array.from(libraryContainer.getElementsByClassName('media-card'));
+
+    // Фильтруем карточки по поисковому запросу (по названию, режиссеру или исполнителю)
+    let filteredMedia = mediaCards;
+
+    if (query) {
+        filteredMedia = mediaCards.filter(card => {
+            const title = card.querySelector('h4').innerText.toLowerCase();
+            const directorOrArtist = card.querySelector('.director-or-artist').innerText.toLowerCase();
+            return title.includes(query) || directorOrArtist.includes(query);
+        });
+    }
+
+    // Функция сортировки по алфавиту
+    function sortByAlphabet(mediaArray) {
+        return mediaArray.sort((a, b) => {
+            const titleA = a.querySelector('h4').innerText.toLowerCase();
+            const titleB = b.querySelector('h4').innerText.toLowerCase();
+            return titleA.localeCompare(titleB); // Сортировка по алфавиту
+        });
+    }
+
+    // Функция сортировки по рейтингу
+    function sortByRating(mediaArray) {
+        return mediaArray.sort((a, b) => {
+            const ratingA = parseFloat(a.querySelector('.rating-box')?.innerText.split('/')[0] || 0);
+            const ratingB = parseFloat(b.querySelector('.rating-box')?.innerText.split('/')[0] || 0);
+            return ratingA - ratingB; // Сортировка по рейтингу (по возрастанию)
+        });
+    }
+
+    // Применяем сортировку в зависимости от выбранного параметра
+    let sortedMedia = filteredMedia;
+    if (sortBy === 'alphabet-asc') {
+        sortedMedia = sortByAlphabet(filteredMedia);
+    } else if (sortBy === 'alphabet-desc') {
+        sortedMedia = sortByAlphabet(filteredMedia).reverse();
+    } else if (sortBy === 'rating-asc') {
+        sortedMedia = sortByRating(filteredMedia);
+    } else if (sortBy === 'rating-desc') {
+        sortedMedia = sortByRating(filteredMedia).reverse();
+    }
+
+    // Обновляем карточки в контейнере
+    mediaCards.forEach(card => {
+        card.style.display = 'none';
+    });
+
+    sortedMedia.forEach(card => {
+        card.style.display = '';
+        libraryContainer.appendChild(card);
+    });
+}
+
+
 function validateForm() {
     const requiredFields = document.querySelectorAll('#media-form input[required], #media-form select[required], #media-form textarea[required]');
     let isValid = true;
@@ -282,13 +605,11 @@ function validateForm() {
 
     requiredFields.forEach(field => {
         if (!field.value.trim()) {
-            // Удаляем и снова добавляем класс для повторной анимации
             field.classList.remove('input-error');
-            void field.offsetWidth; // Триггер перерисовки элемента
+            void field.offsetWidth;  // Это вызывает перерисовку для анимации тряски
             field.classList.add('input-error');
             isValid = false;
 
-            // Запоминаем первое незаполненное поле
             if (!firstInvalidField) {
                 firstInvalidField = field;
             }
@@ -297,13 +618,27 @@ function validateForm() {
         }
     });
 
-    if (!isValid) {
-        showMessage('Заполните все обязательные поля!', 'error');
+    // Проверка рейтинга
+    const ratingField = document.getElementById('rating');
+    const ratingValue = parseFloat(ratingField.value);
+    if (ratingField.value.trim() && (ratingValue < 1 || ratingValue > 10 || isNaN(ratingValue))) {
+        ratingField.classList.remove('input-error');
+        void ratingField.offsetWidth;  // Тряска поля
+        ratingField.classList.add('input-error');
+        isValid = false;
 
-        // Скроллим к первому незаполненному полю
+        if (!firstInvalidField) {
+            firstInvalidField = ratingField;
+        }
+    } else {
+        ratingField.classList.remove('input-error');
+    }
+
+    // Если есть ошибка, скроллим до первого некорректного поля
+    if (!isValid) {
         if (firstInvalidField) {
             firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            firstInvalidField.focus(); // Фокусируем поле для удобства ввода
+            firstInvalidField.focus();
         }
     }
 
@@ -311,30 +646,51 @@ function validateForm() {
 }
 
 
-// Функция для показа всплывающего сообщения
-function showMessage(message, type) {
-    // Убираем предыдущее сообщение, если оно есть
-    const existingMessage = document.querySelector('.form-message');
-    if (existingMessage) {
-        existingMessage.remove();
+function validateEditForm() {
+    const requiredFields = document.querySelectorAll('#edit-modal input[required], #edit-modal select[required], #edit-modal textarea[required]');
+    let isValid = true;
+    let firstInvalidField = null;
+
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.remove('input-error');
+            void field.offsetWidth; // Для анимации тряски
+            field.classList.add('input-error');
+            isValid = false;
+
+            if (!firstInvalidField) {
+                firstInvalidField = field;
+            }
+        } else {
+            field.classList.remove('input-error');
+        }
+    });
+
+    // Проверка рейтинга
+    const ratingField = document.getElementById('edit-rating');
+    const ratingValue = parseFloat(ratingField.value);
+    if (ratingField.value.trim() && (ratingValue < 1 || ratingValue > 10 || isNaN(ratingValue))) {
+        ratingField.classList.remove('input-error');
+        void ratingField.offsetWidth; // Для тряски поля
+        ratingField.classList.add('input-error');
+        isValid = false;
+
+        if (!firstInvalidField) {
+            firstInvalidField = ratingField;
+        }
+    } else {
+        ratingField.classList.remove('input-error');
     }
 
-    // Создаём новое сообщение
-    const messageBox = document.createElement('div');
-    messageBox.className = `form-message ${type}`;
-    messageBox.innerText = message;
+    // Если есть ошибки, скроллим до первого неверного поля
+    if (!isValid && firstInvalidField) {
+        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalidField.focus();
+    }
 
-    document.body.appendChild(messageBox);
-
-    // Показываем сообщение
-    setTimeout(() => messageBox.classList.add('show'), 50);
-
-    // Убираем сообщение через 3 секунды
-    setTimeout(() => {
-        messageBox.classList.remove('show');
-        setTimeout(() => messageBox.remove(), 500); // Удаляем из DOM
-    }, 3000);
+    return isValid;
 }
+
 
 // Функция для сохранения данных в localStorage
 function saveLibrary() {
@@ -358,5 +714,9 @@ function loadLibrary() {
     displayKanban();
     displayHistory();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchLibrary();
+});
 
 window.onload = loadLibrary;

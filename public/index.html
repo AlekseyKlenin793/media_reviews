@@ -21,7 +21,7 @@
                 <div class="form-group">
                     <label for="media-type">Выберите тип медиа</label>
                     <select id="media-type" onchange="showForm()">
-                        <option value="">Выберите тип медиа</option>
+                        <option value="">Не выбрано</option>
                         <option value="movie">Фильм</option>
                         <option value="series">Сериал</option>
                         <option value="music">Музыка</option>
@@ -32,11 +32,21 @@
             </section>
 
             <div class="content">
-                <!-- Секция Моя библиотека -->
                 <section id="library-section">
                     <h2>Моя библиотека</h2>
-                    <input type="text" id="search-bar" placeholder="Введите название для поиска..."
-                        oninput="searchLibrary()">
+                    <!-- Поиск -->
+                    <div class="search-container">
+                        <input type="text" id="search-bar" placeholder="Введите название для поиска..."
+                            oninput="searchLibrary()">
+                        <!-- Добавляем выпадающий список для сортировки -->
+                        <select id="sort-by" onchange="searchLibrary()">
+                            <option value="alphabet-asc">По алфавиту (A-Z)</option>
+                            <option value="alphabet-desc">По алфавиту (Z-A)</option>
+                            <option value="rating-asc">По рейтингу (низкий - высокий)</option>
+                            <option value="rating-desc">По рейтингу (высокий - низкий)</option>
+                        </select>
+                    </div>
+
                     <div id="library" class="media-container"></div>
                 </section>
 
@@ -51,7 +61,7 @@
                     <h2>Доска</h2>
                     <div class="kanban">
                         <div class="kanban-column" id="kanban-plans">
-                            <h3>В планах</h3>
+                            <h3>Планирую</h3>
                             <div class="kanban-items"></div>
                         </div>
                         <div class="kanban-column" id="kanban-in-progress">
@@ -68,16 +78,26 @@
         </footer>
     </div>
 
-    <!-- Модальное окно для просмотра информации о медиа -->
     <div id="modal" class="modal" style="display: none;">
         <div class="modal-content">
-            <!-- Крестик для закрытия модального окна -->
-            <span class="close" onclick="closeModal()">&times;</span>
-            <!-- Контейнер для информации -->
             <div id="modal-info"></div>
+            <span class="close" onclick="closeModal()">×</span>
         </div>
     </div>
 
+    <!-- Модальное окно для редактирования медиа -->
+    <div id="edit-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div id="edit-modal-info">
+                <!-- Сюда будет динамически подставляться форма редактирования -->
+            </div>
+            <div class="modal-actions">
+                <button id="save-btn" class="btn save-btn" onclick="saveMediaChanges()">Сохранить</button>
+                <button id="cancel-btn" class="btn cancel-btn" onclick="closeEditModal()">Отменить</button>
+            </div>
+            <span class="close" onclick="closeEditModal()">×</span>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
