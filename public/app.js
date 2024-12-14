@@ -720,3 +720,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.onload = loadLibrary;
+
+document.getElementById('get-server-info').addEventListener('click', async () => {
+    try {
+        const response = await fetch('/api/server-info');
+        if (!response.ok) throw new Error('Ошибка при получении данных');
+        const serverInfo = await response.json();
+
+        const infoDiv = document.getElementById('server-info');
+        infoDiv.innerHTML = `
+            <h4>Информация о сервере:</h4>
+            <p>Платформа: ${serverInfo.platform}</p>
+            <p>Архитектура: ${serverInfo.arch}</p>
+            <p>Время работы: ${Math.floor(serverInfo.uptime / 60)} минут</p>
+            <p>Общая память: ${(serverInfo.totalMemory / (1024 ** 3)).toFixed(2)} ГБ</p>
+            <p>Свободная память: ${(serverInfo.freeMemory / (1024 ** 3)).toFixed(2)} ГБ</p>
+            <p>Процессоры: ${serverInfo.cpus.join(', ')}</p>
+        `;
+    } catch (error) {
+        console.error(error);
+        alert('Не удалось получить информацию о сервере');
+    }
+});

@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { Sequelize } = require('sequelize');
 const { Movie, Series, Music } = require('./models');
+const morgan = require('morgan');
+const os = require('os');
 
 const app = express();
 const PORT = 3000;
@@ -13,6 +15,7 @@ const sequelize = new Sequelize('media_reviews', 'postgres', '804793', {
     dialect: 'postgres',
 });
 
+app.use(morgan('combined'));
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
@@ -22,7 +25,15 @@ sequelize.authenticate()
     .then(() => console.log('Database connected successfully.'))
     .catch(err => console.error('Unable to connect to the database:', err));
 
-// Маршруты
+app.get('/api/server-info', (req, res) => {
+    try {
+        const serverInfo = getServerInfo();
+        res.json(serverInfo);
+    } catch (error) {
+        console.error('Ошибка получения информации о сервере:', error);
+        res.status(500).json({ message: 'Ошибка получения информации о сервере' });
+    }
+});
 
 // Получение всех медиа
 app.get('/api/media/all', async (req, res) => {

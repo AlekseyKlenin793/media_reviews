@@ -593,3 +593,77 @@ footer {
     font-weight: bold;
     cursor: pointer;
 }
+
+/* Кнопка получения информации о сервере */
+.server-info-btn {
+    background-color: #007BFF;
+    /* Синий цвет, как у других кнопок */
+    color: #fff;
+    border: 1px solid #0056b3;
+    /* Немного затемненная рамка для акцента */
+    padding: 12px 20px;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-transform: uppercase;
+    /* Приведение текста к верхнему регистру для акцента */
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Эффект наведения */
+.server-info-btn:hover {
+    background-color: #0056b3;
+    /* Темный синий при наведении */
+    transform: translateY(-2px);
+    /* Легкое поднятие */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    /* Увеличение тени */
+}
+
+/* Эффект нажатия */
+.server-info-btn:active {
+    background-color: #004494;
+    /* Еще более темный цвет */
+    transform: translateY(1px);
+    /* Легкое опускание */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    /* Уменьшение тени */
+}
+
+#server-info-section {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: left;
+}
+
+#server-info-section h2 {
+    margin-bottom: 20px;
+    font-size: 1.75em;
+    color: #4a6a84;
+}
+
+#get-server-info {
+    display: inline-block;
+    padding: 12px 20px;
+    font-size: 1em;
+    color: white;
+    background-color: #007BFF;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#get-server-info:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+#get-server-info:active {
+    transform: scale(1);
+}
